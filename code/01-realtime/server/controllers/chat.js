@@ -37,42 +37,45 @@ const chat = (io) => {
       //    socket.broadcast.emit('user joined', ` BROADCAST ${username} joined`)
       // })
 
-      // socket.on('message', (message) => {
-      //    console.log('message received : ', message)
-      //    io.emit('message', message)
-      // })
+      socket.on('message', (message) => {
+         console.log('message received : ', message)
+         io.emit('message', message)
+      })
 
-      
       let users = []
       for (let [id, socket] of io.of('/').sockets) {
          const existingUser = users.find(
             (user) => user.username === socket.username
-            )
-            if (existingUser) {
-               socket.emit('username take')
-               socket.disconnect()
-            } else {
-               users.push({
-                  userID: id,
-                  username: socket.username,
-               })
-            }
+         )
+         if (existingUser) {
+            socket.emit('username taken')
+            socket.disconnect()
+            return
+         } else {
+            users.push({
+               userID: id,
+               username: socket.username,
+            })
          }
-         // notify the existing users
-         socket.emit('users', users)
-         
-         socket.broadcast.emit('user connected', {
-            userID: socket.id,
-            username: socket.username
-         })
-         
-         //disconnect
-         socket.on('disconnect', () => {
-            socket.broadcast.emit('user disconnected',socket.id)
+      }
+      // notify the existing users
+      socket.emit('users', users)
 
-         })
+      socket.broadcast.emit('user connected', {
+         userID: socket.id,
+         username: socket.username,
       })
-   }
-   
-   export default chat
-   
+
+      //disconnect
+      socket.on('disconnect', () => {
+         socket.broadcast.emit('user disconnected', socket.id)
+      })
+
+      socket.on('typing',(username)=>{
+         socket.broadcast.emit('typing',username)
+         console.log('typing', username)
+      })
+   })
+}
+
+export default chat

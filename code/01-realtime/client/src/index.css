@@ -11,3 +11,20 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.online-dot{
+  height:10px;
+  width:10px;
+  background-color:green;
+  border-radius: 50%;
+  display:inline-block;
+}
+
+
+.offline-dot{
+  height:10px;
+  width:10px;
+  background-color:red;
+  border-radius: 50%;
+  display:inline-block;
+}
