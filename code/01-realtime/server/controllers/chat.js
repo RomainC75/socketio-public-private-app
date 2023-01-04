@@ -42,6 +42,14 @@ const chat = (io) => {
          io.emit('message', message)
       })
 
+      socket.on('private message', ({message, to})=>{
+         console.log('incoming message ! ', `message from ${to} : ${message}`)
+         socket.to(to).emit('private message',{
+            from: socket.id,
+            message
+         })
+      })
+
       let users = []
       for (let [id, socket] of io.of('/').sockets) {
          const existingUser = users.find(
