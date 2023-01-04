@@ -4,14 +4,15 @@ import Username from './components/username'
 import SendMessage from './components/sendMessage'
 import toast, { Toaster } from 'react-hot-toast'
 import ScrollToBottom from 'react-scroll-to-bottom'
-import {css} from '@emotion/css'
+import { css } from '@emotion/css'
+import { PrivateMessage } from './components/privateMessage'
 // const notify = (username) => toast(`new user : ${username}`)
 
 const ROOT_CSS = css({
    height: 600,
-   width: window.innerWidth / 2
+   width: window.innerWidth / 2,
 })
- 
+
 function App() {
    const [username, setUsername] = useState('')
    const [connected, setConnected] = useState(false)
@@ -20,6 +21,8 @@ function App() {
    const [users, setUsers] = useState([])
    const [typing, setTyping] = useState('')
    const [selectedUser, setSelectedUser] = useState(null)
+   // private message
+   const [privateMessage, setPrivateMessage] = useState('')
 
    const handleUsername = (e) => {
       e.preventDefault()
@@ -121,6 +124,27 @@ function App() {
       socket.emit('typing', username)
    }
 
+   const handlePrivateMessage = (e) => {
+      e.preventDefault()
+      console.log('sending private message')
+      if (selectedUser) {
+         socket.emit('private message', {
+            id: Date.now(),
+            name: username,
+            to: selectedUser.userID,
+            message: privateMessage,
+         })
+      }
+      let updated = selectedUser
+      updated.messages.push({
+         message: privateMessage,
+         fromSelf: true,
+         hasNewMessages: false,
+      })
+      setSelectedUser(updated)
+      setPrivateMessage('')
+   }
+
    useEffect(() => {
       socket.on('typing', (username) => {
          setTyping(`${username} is typing...`)
@@ -133,18 +157,47 @@ function App() {
       }
    }, [])
 
-   const handleUserNameClick = (user)=>{
-      if(user.self || !user.connected){ return }
-      setSelectedUser({...user, hasNewMessages: false})
+   useEffect(() => {
+      socket.on('private message', ({ message, from }) => {
+         console.log('incoming message ! ', `message from ${from} : ${message}`)
+         const allUsers = users
+         let index = allUsers.findIndex((usr) => usr.userID === from)
+         let foundUser = allUsers[index]
+
+         foundUser.messages.push({
+            message,
+            fromSelf: false,
+         })
+
+         if (foundUser) {
+            if (selectedUser) {
+               if (foundUser.userID !== selectedUser.userID) {
+                  foundUser.hasNewMessages = true
+               }
+            } else {
+               foundUser.hasNewMessages = true
+            }
+            allUsers[index] = foundUser
+            setUsers([...allUsers])
+         }
+      })
+      return () => {
+         socket.off('private message')
+      }
+   }, [users])
+
+   const handleUserNameClick = (user) => {
+      if (user.self || !user.connected) {
+         return
+      }
+      setSelectedUser({ ...user, hasNewMessages: false })
       let allUsers = users
-      let foundIndex = allUsers.findIndex((u)=>u.userID===user.userID)
+      let foundIndex = allUsers.findIndex((u) => u.userID === user.userID)
       let foundUser = allUsers[foundIndex]
       foundUser.hasNewMessages = false
 
       allUsers[foundIndex] = foundUser
       setUsers([...allUsers])
-
-
    }
 
    return (
@@ -154,7 +207,10 @@ function App() {
             <div className="d-flex justify-content-evenly pt-2 pb-1">
                {connected &&
                   users.map((user) => (
-                     <div key={user.userID} onClick={()=>handleUserNameClick(user)}>
+                     <div
+                        key={user.userID}
+                        onClick={() => handleUserNameClick(user)}
+                     >
                         {`${user.username
                            .charAt(0)
                            .toUpperCase()}${user.username.slice(1)}`}{' '}
@@ -163,6 +219,14 @@ function App() {
                            <span className="online-dot"></span>
                         ) : (
                            <span className="offline-dot"></span>
+                        )}
+                        {user.hasNewMessages && (
+                           <b className="text-danger">_ _ _</b>
+                        )}
+                        {user.hasNewMessages && (
+                           <b className="text-danger">
+                              {user.hasNewMessages && user.messages.length}
+                           </b>
                         )}
                      </div>
                   ))}
@@ -202,23 +266,36 @@ function App() {
             <div className="col-md-6">
                <ScrollToBottom className={ROOT_CSS}>
                   {messages.map((data, index) => (
-                  <div
-                     key={`${index}-${data.id}`}
-                     className="alert alert-secondary"
-                  >
-                     {`${data.name.charAt(0).toUpperCase()}${data.name.slice(
-                        1
-                     )} - ${data.message}`}
-                  </div>
-               ))}
+                     <div
+                        key={`${index}-${data.id}`}
+                        className="alert alert-secondary"
+                     >
+                        {`${data.name.charAt(0).toUpperCase()}${data.name.slice(
+                           1
+                        )} - ${data.message}`}
+                     </div>
+                  ))}
                </ScrollToBottom>
             </div>
             <br />
-
             {typing && <span className="error">{typing}</span>}
-            
          </div>
 
+         <p>mlksdjf</p>
+         {selectedUser && (
+            <PrivateMessage
+               connected={connected}
+               handlePrivateMessage={handlePrivateMessage}
+               privateMessage={privateMessage}
+               setPrivateMessage={setPrivateMessage}
+               setUsername={setUsername}
+               handleUsername={handleUsername}
+               username={username}
+               messages={messages}
+               typing={typing}
+               selectedUser={selectedUser}
+            />
+         )}
          <div className="row">
             <p>{JSON.stringify(selectedUser)}</p>
          </div>
